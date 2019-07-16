@@ -68,7 +68,7 @@ static void MX_USART1_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	char* buffTx = "Hello world!\r\n";
   /* USER CODE END 1 */
   
 
@@ -78,7 +78,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-	char* buffTx = "Hello world!\r\n";
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -99,11 +99,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* USER CODE END WHILE */
+		
+    /* USER CODE BEGIN 3 */
 		HAL_UART_Transmit(&huart1, (uint8_t*) buffTx, strlen(buffTx), 10);
 		HAL_Delay(1000);
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
