@@ -81,7 +81,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint32_t ms_counter = Ms_Tick();
-	uint8_t data = 0x02;
+	uint8_t data = 0x72;
   /* USER CODE END 1 */
   
 
@@ -123,6 +123,15 @@ int main(void)
 		if (Ms_Tick() - ms_counter > 0)
 		{
 			HAL_UART_Transmit(&huart2, &data, 1, 10);
+		}
+		/* Connect PE2 to 5V (since it is pull-down) to light up LD3 */
+		if (HAL_GPIO_ReadPin(GPIO_Input_GPIO_Port, GPIO_Input_Pin) == GPIO_PIN_SET)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+		}
+		else
+		{
+			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
 		}
   }
   /* USER CODE END 3 */
@@ -347,7 +356,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : GPIO_Input_Pin */
   GPIO_InitStruct.Pin = GPIO_Input_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIO_Input_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CS_I2C_SPI_Pin */
