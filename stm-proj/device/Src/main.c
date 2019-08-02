@@ -36,6 +36,7 @@
 /* USER CODE BEGIN PD */
 #define OFF 0
 #define ON 1
+#define NUM_BUTTONS 4
 #define DEBOUNCE_DELAY_MS 100
 /* USER CODE END PD */
 
@@ -92,7 +93,7 @@ void Read_Button(button* button);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	button buttons[4];
+	button buttons[NUM_BUTTONS];
 	uint32_t ms_counter = Ms_Tick();
 	uint8_t i;
   /* USER CODE END 1 */
@@ -135,18 +136,36 @@ int main(void)
     /* USER CODE BEGIN 3 */
 		if (Ms_Tick() - ms_counter > 0)
 		{
-			Read_Button(&buttons[0]);
+			for (i = 0; i < NUM_BUTTONS; i++)
+			{
+				Read_Button(&buttons[i]);
+			}
 			ms_counter++;
 		}
 		
 		/* Connect PE2 to 5V (since it is pull-down) to light up LD3 */
-		if (buttons[0].status)
+		if (buttons[0].status == ON)
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+		}
+		else if (buttons[1].status == ON)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
+		}
+		else if (buttons[2].status == ON)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+		}
+		else if (buttons[3].status == ON)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
 		}
 		else
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
 		}
   }
   /* USER CODE END 3 */
