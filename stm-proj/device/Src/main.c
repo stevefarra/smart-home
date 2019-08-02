@@ -34,7 +34,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define OFF 0
+#define ON 1
+#define DEBOUNCE_DELAY_MS 100
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -75,6 +77,7 @@ void MX_USB_HOST_Process(void);
 uint32_t Ms_Tick(void);
 void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(button buttons[]);
+void Read_Button(button* button);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -89,9 +92,9 @@ void Buttons_Init(button buttons[]);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	uint32_t ms_counter = Ms_Tick();
-	uint8_t data = 0x72;
 	button buttons[4];
+	uint32_t ms_counter = Ms_Tick();
+	uint8_t i;
   /* USER CODE END 1 */
   
 
@@ -132,31 +135,18 @@ int main(void)
     /* USER CODE BEGIN 3 */
 		if (Ms_Tick() - ms_counter > 0)
 		{
-			HAL_UART_Transmit(&huart2, &data, 1, 10);
+			Read_Button(&buttons[0]);
+			ms_counter++;
 		}
+		
 		/* Connect PE2 to 5V (since it is pull-down) to light up LD3 */
-		if (HAL_GPIO_ReadPin(buttons[0].GPIO_bank, buttons[0].GPIO_pin) == GPIO_PIN_SET)
+		if (buttons[0].status)
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
-		}
-		else if (HAL_GPIO_ReadPin(buttons[1].GPIO_bank, buttons[1].GPIO_pin) == GPIO_PIN_SET)
-		{
-			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
-		}
-		else if (HAL_GPIO_ReadPin(buttons[2].GPIO_bank, buttons[2].GPIO_pin) == GPIO_PIN_SET)
-		{
-			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-		}
-		else if (HAL_GPIO_ReadPin(buttons[3].GPIO_bank, buttons[3].GPIO_pin) == GPIO_PIN_SET)
-		{
-			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
 		}
 		else
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
 		}
   }
   /* USER CODE END 3 */
@@ -468,6 +458,33 @@ void Buttons_Init(button buttons[])
 	Button_Init(&buttons[1], GPIOE, GPIO_InputE4_Pin);
 	Button_Init(&buttons[2], GPIOE, GPIO_InputE5_Pin);
 	Button_Init(&buttons[3], GPIOE, GPIO_InputE6_Pin);
+}
+void Read_Button(button* button)
+{
+	if (HAL_GPIO_ReadPin(button->GPIO_bank, button->GPIO_pin) == GPIO_PIN_SET)
+	{
+		button->counter++;
+	}
+	else
+	{
+		button->counter = 0;
+		button->status = OFF;
+	}
+	if (button->counter == DEBOUNCE_DELAY_MS)
+	{
+		button->counter = 0;
+		button->status = ON;
+	}
+	/*
+	if (HAL_GPIO_ReadPin(button.GPIO_bank, button.GPIO_pin) == GPIO_PIN_SET)
+	{
+		button->status = ON;
+	}
+	else
+	{
+		button->status = OFF;
+	}
+	*/
 }
 /* USER CODE END 4 */
 
