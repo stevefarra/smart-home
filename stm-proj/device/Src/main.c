@@ -52,7 +52,14 @@ SPI_HandleTypeDef hspi1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+typedef struct
+{
+	GPIO_TypeDef* GPIO_bank;
+	uint16_t GPIO_pin;
+	uint64_t counter; // Used for debouncing
+	uint8_t status;   // Indicates whether or not the button is pressed
+}
+button;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,6 +73,7 @@ void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
 uint32_t Ms_Tick(void);
+void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -82,6 +90,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	uint32_t ms_counter = Ms_Tick();
 	uint8_t data = 0x72;
+	button PE2;
   /* USER CODE END 1 */
   
 
@@ -109,7 +118,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 2 */
-
+	Button_Init(&PE2, GPIO_Input_GPIO_Port, GPIO_Input_Pin);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -125,7 +134,7 @@ int main(void)
 			HAL_UART_Transmit(&huart2, &data, 1, 10);
 		}
 		/* Connect PE2 to 5V (since it is pull-down) to light up LD3 */
-		if (HAL_GPIO_ReadPin(GPIO_Input_GPIO_Port, GPIO_Input_Pin) == GPIO_PIN_SET)
+		if (HAL_GPIO_ReadPin(PE2.GPIO_bank, PE2.GPIO_pin) == GPIO_PIN_SET)
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
 		}
@@ -428,6 +437,14 @@ static void MX_GPIO_Init(void)
 uint32_t Ms_Tick(void)
 {
 	return HAL_GetTick();
+}
+
+void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
+{
+	button->GPIO_bank = GPIO_bank;
+	button->GPIO_pin = GPIO_pin;
+	button->counter = 0;
+	button->status = 0;
 }
 /* USER CODE END 4 */
 
