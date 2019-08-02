@@ -62,6 +62,12 @@ void Error_Handler(void);
 #define GPIO_Input_GPIO_Port GPIOE
 #define CS_I2C_SPI_Pin GPIO_PIN_3
 #define CS_I2C_SPI_GPIO_Port GPIOE
+#define GPIO_InputE4_Pin GPIO_PIN_4
+#define GPIO_InputE4_GPIO_Port GPIOE
+#define GPIO_InputE5_Pin GPIO_PIN_5
+#define GPIO_InputE5_GPIO_Port GPIOE
+#define GPIO_InputE6_Pin GPIO_PIN_6
+#define GPIO_InputE6_GPIO_Port GPIOE
 #define PC14_OSC32_IN_Pin GPIO_PIN_14
 #define PC14_OSC32_IN_GPIO_Port GPIOC
 #define PC15_OSC32_OUT_Pin GPIO_PIN_15

@@ -74,6 +74,7 @@ void MX_USB_HOST_Process(void);
 /* USER CODE BEGIN PFP */
 uint32_t Ms_Tick(void);
 void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
+void Buttons_Init(button buttons[]);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -90,7 +91,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	uint32_t ms_counter = Ms_Tick();
 	uint8_t data = 0x72;
-	button PE2;
+	button buttons[4];
   /* USER CODE END 1 */
   
 
@@ -118,7 +119,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 2 */
-	Button_Init(&PE2, GPIO_Input_GPIO_Port, GPIO_Input_Pin);
+	Buttons_Init(buttons);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -134,13 +135,28 @@ int main(void)
 			HAL_UART_Transmit(&huart2, &data, 1, 10);
 		}
 		/* Connect PE2 to 5V (since it is pull-down) to light up LD3 */
-		if (HAL_GPIO_ReadPin(PE2.GPIO_bank, PE2.GPIO_pin) == GPIO_PIN_SET)
+		if (HAL_GPIO_ReadPin(buttons[0].GPIO_bank, buttons[0].GPIO_pin) == GPIO_PIN_SET)
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+		}
+		else if (HAL_GPIO_ReadPin(buttons[1].GPIO_bank, buttons[1].GPIO_pin) == GPIO_PIN_SET)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
+		}
+		else if (HAL_GPIO_ReadPin(buttons[2].GPIO_bank, buttons[2].GPIO_pin) == GPIO_PIN_SET)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+		}
+		else if (HAL_GPIO_ReadPin(buttons[3].GPIO_bank, buttons[3].GPIO_pin) == GPIO_PIN_SET)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
 		}
 		else
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
 		}
   }
   /* USER CODE END 3 */
@@ -362,11 +378,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin 
                           |Audio_RST_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : GPIO_Input_Pin */
-  GPIO_InitStruct.Pin = GPIO_Input_Pin;
+  /*Configure GPIO pins : GPIO_Input_Pin GPIO_InputE4_Pin GPIO_InputE5_Pin GPIO_InputE6_Pin */
+  GPIO_InitStruct.Pin = GPIO_Input_Pin|GPIO_InputE4_Pin|GPIO_InputE5_Pin|GPIO_InputE6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIO_Input_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CS_I2C_SPI_Pin */
   GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
@@ -445,6 +461,13 @@ void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
 	button->GPIO_pin = GPIO_pin;
 	button->counter = 0;
 	button->status = 0;
+}
+void Buttons_Init(button buttons[])
+{
+	Button_Init(&buttons[0], GPIOE, GPIO_Input_Pin);
+	Button_Init(&buttons[1], GPIOE, GPIO_InputE4_Pin);
+	Button_Init(&buttons[2], GPIOE, GPIO_InputE5_Pin);
+	Button_Init(&buttons[3], GPIOE, GPIO_InputE6_Pin);
 }
 /* USER CODE END 4 */
 
