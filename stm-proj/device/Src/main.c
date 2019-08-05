@@ -80,6 +80,7 @@ void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(button buttons[]);
 void Read_Button(button* button);
 uint8_t Encode_UART_Packet(button buttons[]);
+void LED_Debug(button buttons[]);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -145,32 +146,7 @@ int main(void)
 		}
 		packet = Encode_UART_Packet(buttons);
 		HAL_UART_Transmit(&huart2, &packet, 1, 10);
-		
-		/* DEBUG */
-		if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
-		{
-			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
-		}
-		else if (buttons[1].status == ON)
-		{
-			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
-		}
-		else if (buttons[2].status == ON)
-		{
-			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-		}
-		else if (buttons[3].status == ON)
-		{
-			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
-		}
-		else
-		{
-			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
-		}
-		/* END DEBUG */
+		LED_Debug(buttons);
   }
   /* USER CODE END 3 */
 }
@@ -501,6 +477,7 @@ void Read_Button(button* button)
 		button->status = ON;
 	}
 }
+
 uint8_t Encode_UART_Packet(button buttons[])
 {
 	uint8_t i;
@@ -516,6 +493,33 @@ uint8_t Encode_UART_Packet(button buttons[])
 		}
 	}
 	return packet;
+}
+
+void LED_Debug(button buttons[])
+{
+	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
+		{
+			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+		}
+		else if (buttons[1].status == ON)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
+		}
+		else if (buttons[2].status == ON)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+		}
+		else if (buttons[3].status == ON)
+		{
+			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
+		}
+		else
+		{
+			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
+		}
 }
 /* USER CODE END 4 */
 
