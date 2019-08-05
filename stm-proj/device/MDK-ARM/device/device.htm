@@ -3,7 +3,7 @@
 <title>Static Call Graph - [device\device.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image device\device.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060422: Last Updated: Mon Aug 05 10:48:38 2019
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060422: Last Updated: Mon Aug 05 15:14:47 2019
 <BR><P>
 <H3>Maximum Stack Usage =        384 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -471,7 +471,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f407xx.o(RESET)
 </UL>
-<P><STRONG><a name="[70]"></a>Button_Init</STRONG> (Thumb, 14 bytes, Stack size 0 bytes, main.o(i.Button_Init))
+<P><STRONG><a name="[70]"></a>Button_Init</STRONG> (Thumb, 16 bytes, Stack size 0 bytes, main.o(i.Button_Init))
 <BR><BR>[Called By]<UL><LI><a href="#[6f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Buttons_Init
 </UL>
 
@@ -486,7 +486,7 @@ Global Symbols
 <P><STRONG><a name="[7]"></a>DebugMon_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f4xx_it.o(i.DebugMon_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f407xx.o(RESET)
 </UL>
-<P><STRONG><a name="[109]"></a>Encode_UART_Packet</STRONG> (Thumb, 40 bytes, Stack size 0 bytes, main.o(i.Encode_UART_Packet))
+<P><STRONG><a name="[109]"></a>Encode_Radio_Packet</STRONG> (Thumb, 8 bytes, Stack size 0 bytes, main.o(i.Encode_Radio_Packet))
 <BR><BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -608,9 +608,7 @@ Global Symbols
 <P><STRONG><a name="[8b]"></a>HAL_HCD_IRQHandler</STRONG> (Thumb, 306 bytes, Stack size 24 bytes, stm32f4xx_hal_hcd.o(i.HAL_HCD_IRQHandler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 64<LI>Call Chain = HAL_HCD_IRQHandler &rArr; HCD_HC_IN_IRQHandler
 </UL>
-<BR>[Calls]<UL><LI><a href="#[93]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_OUT_IRQHandler
-<LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_IN_IRQHandler
-<LI><a href="#[90]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_HCD_SOF_Callback
+<BR>[Calls]<UL><LI><a href="#[90]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_HCD_SOF_Callback
 <LI><a href="#[7f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_HCD_Disconnect_Callback
 <LI><a href="#[8d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USB_ReadInterrupts
 <LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USB_InitFSLSPClkSel
@@ -618,6 +616,8 @@ Global Symbols
 <LI><a href="#[8c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USB_GetMode
 <LI><a href="#[94]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_RXQLVL_IRQHandler
 <LI><a href="#[8f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_Port_IRQHandler
+<LI><a href="#[93]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_OUT_IRQHandler
+<LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_IN_IRQHandler
 </UL>
 <BR>[Called By]<UL><LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OTG_FS_IRQHandler
 </UL>
@@ -963,7 +963,7 @@ Global Symbols
 <P><STRONG><a name="[8]"></a>PendSV_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f4xx_it.o(i.PendSV_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f407xx.o(RESET)
 </UL>
-<P><STRONG><a name="[d7]"></a>Read_Button</STRONG> (Thumb, 64 bytes, Stack size 8 bytes, main.o(i.Read_Button))
+<P><STRONG><a name="[d7]"></a>Read_Button</STRONG> (Thumb, 60 bytes, Stack size 8 bytes, main.o(i.Read_Button))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = Read_Button
 </UL>
 <BR>[Calls]<UL><LI><a href="#[d8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_ReadPin
@@ -1416,9 +1416,9 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[86]"></a>USB_HC_Halt</STRONG> (Thumb, 194 bytes, Stack size 0 bytes, stm32f4xx_ll_usb.o(i.USB_HC_Halt))
-<BR><BR>[Called By]<UL><LI><a href="#[93]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_OUT_IRQHandler
+<BR><BR>[Called By]<UL><LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_HCD_HC_Halt
+<LI><a href="#[93]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_OUT_IRQHandler
 <LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HCD_HC_IN_IRQHandler
-<LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_HCD_HC_Halt
 </UL>
 
 <P><STRONG><a name="[88]"></a>USB_HC_Init</STRONG> (Thumb, 240 bytes, Stack size 28 bytes, stm32f4xx_ll_usb.o(i.USB_HC_Init))
@@ -1516,7 +1516,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[62]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBH_CDC_InterfaceDeInit
 </UL>
 
-<P><STRONG><a name="[5b]"></a>main</STRONG> (Thumb, 210 bytes, Stack size 104 bytes, main.o(i.main))
+<P><STRONG><a name="[5b]"></a>main</STRONG> (Thumb, 208 bytes, Stack size 104 bytes, main.o(i.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 384<LI>Call Chain = main &rArr; MX_USB_HOST_Process &rArr; USBH_Process &rArr; USBH_HandleEnum &rArr; USBH_Get_StringDesc &rArr; USBH_GetDescriptor &rArr; USBH_CtlReq &rArr; USBH_HandleControl &rArr; USBH_CtlSendData &rArr; USBH_LL_SubmitURB &rArr; HAL_HCD_HC_SubmitRequest &rArr; USB_HC_StartXfer &rArr; USB_WritePacket
 </UL>
 <BR>[Calls]<UL><LI><a href="#[d5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_USB_HOST_Process
@@ -1530,7 +1530,7 @@ Global Symbols
 <LI><a href="#[da]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SystemClock_Config
 <LI><a href="#[d7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Read_Button
 <LI><a href="#[cb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LED_Debug
-<LI><a href="#[109]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Encode_UART_Packet
+<LI><a href="#[109]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Encode_Radio_Packet
 <LI><a href="#[6f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Buttons_Init
 <LI><a href="#[cf]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_SPI1_Init
 <LI><a href="#[ce]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_GPIO_Init

@@ -37,6 +37,7 @@
 #define OFF 0
 #define ON 1
 #define NUM_BUTTONS 4
+#define NUM_RADIO_PACKETS 6
 #define DEBOUNCE_DELAY_MS 100
 /* USER CODE END PD */
 
@@ -61,6 +62,7 @@ typedef struct
 	uint16_t GPIO_pin;
 	uint64_t counter; // Used for debouncing
 	uint8_t status;   // Indicates whether or not the button is pressed
+	uint8_t radio_flag;
 }
 button;
 /* USER CODE END PV */
@@ -81,6 +83,7 @@ void Buttons_Init(button buttons[]);
 void Read_Button(button* button);
 uint8_t Encode_UART_Packet(button buttons[]);
 void LED_Debug(button buttons[]);
+uint32_t Encode_Radio_Packet(uint8_t button_id);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -97,7 +100,9 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	button buttons[NUM_BUTTONS];
 	uint32_t ms_counter = Ms_Tick();
-	uint8_t i, packet;
+	uint8_t i, UART_packet;
+	uint32_t radio_packet;
+	uint32_t* radio_packet_ptr;
   /* USER CODE END 1 */
   
 
@@ -142,11 +147,21 @@ int main(void)
 			{
 				Read_Button(&buttons[i]);
 			}
+			UART_packet = Encode_UART_Packet(buttons);
+			HAL_UART_Transmit(&huart2, &UART_packet, 1, 10);
+			
+			/*
+			for (i = 0; i < NUM_BUTTONS; i++)
+			{
+				if (buttons[i].radio_flag == ON)
+				{
+					radio_packet = Encode_Radio_Packet(i);
+					Send_Radio_Packet(radio_packet, NUM_RADIO_PACKETS);
+				}
+			}
+			*/
 			ms_counter++;
 		}
-		packet = Encode_UART_Packet(buttons);
-		HAL_UART_Transmit(&huart2, &packet, 1, 10);
-		LED_Debug(buttons);
   }
   /* USER CODE END 3 */
 }
@@ -449,7 +464,8 @@ void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
 	button->GPIO_bank = GPIO_bank;
 	button->GPIO_pin = GPIO_pin;
 	button->counter = 0;
-	button->status = 0;
+	button->status = OFF;
+	button->radio_flag = OFF;
 }
 
 void Buttons_Init(button buttons[])
@@ -468,13 +484,13 @@ void Read_Button(button* button)
 	}
 	else
 	{
-		button->counter = 0;
 		button->status = OFF;
+		button->counter = 0;
 	}
 	if (button->counter == DEBOUNCE_DELAY_MS)
 	{
-		button->counter = 0;
 		button->status = ON;
+		button->radio_flag = ON;
 	}
 }
 
@@ -520,6 +536,17 @@ void LED_Debug(button buttons[])
 			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
 		}
+}
+
+uint32_t Encode_Radio_Packet(uint8_t button_id)
+{
+	uint32_t packet = 0;
+	
+	packet = (uint32_t) button_id;
+	packet <<= 3;
+	packet |= 1;
+	
+	return packet;
 }
 /* USER CODE END 4 */
 
