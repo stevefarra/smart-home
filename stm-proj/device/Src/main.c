@@ -79,6 +79,7 @@ uint32_t Ms_Tick(void);
 void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(button buttons[]);
 void Read_Button(button* button);
+uint8_t Encode_UART_Packet(button buttons[]);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -95,7 +96,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	button buttons[NUM_BUTTONS];
 	uint32_t ms_counter = Ms_Tick();
-	uint8_t i;
+	uint8_t i, packet;
   /* USER CODE END 1 */
   
 
@@ -142,9 +143,11 @@ int main(void)
 			}
 			ms_counter++;
 		}
+		packet = Encode_UART_Packet(buttons);
+		HAL_UART_Transmit(&huart2, &packet, 1, 10);
 		
-		/* Connect PE2 to 5V (since it is pull-down) to light up LD3 */
-		if (buttons[0].status == ON)
+		/* DEBUG */
+		if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
 		{
 			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
 		}
@@ -167,6 +170,7 @@ int main(void)
 			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
 		}
+		/* END DEBUG */
   }
   /* USER CODE END 3 */
 }
@@ -471,13 +475,15 @@ void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
 	button->counter = 0;
 	button->status = 0;
 }
+
 void Buttons_Init(button buttons[])
 {
-	Button_Init(&buttons[0], GPIOE, GPIO_Input_Pin);
-	Button_Init(&buttons[1], GPIOE, GPIO_InputE4_Pin);
-	Button_Init(&buttons[2], GPIOE, GPIO_InputE5_Pin);
-	Button_Init(&buttons[3], GPIOE, GPIO_InputE6_Pin);
+	Button_Init(&buttons[0], GPIOE, GPIO_Input_Pin);   // PE2
+	Button_Init(&buttons[1], GPIOE, GPIO_InputE4_Pin); // PE4
+	Button_Init(&buttons[2], GPIOE, GPIO_InputE5_Pin); // PE5
+	Button_Init(&buttons[3], GPIOE, GPIO_InputE6_Pin); // PE6
 }
+
 void Read_Button(button* button)
 {
 	if (HAL_GPIO_ReadPin(button->GPIO_bank, button->GPIO_pin) == GPIO_PIN_SET)
@@ -494,16 +500,22 @@ void Read_Button(button* button)
 		button->counter = 0;
 		button->status = ON;
 	}
-	/*
-	if (HAL_GPIO_ReadPin(button.GPIO_bank, button.GPIO_pin) == GPIO_PIN_SET)
+}
+uint8_t Encode_UART_Packet(button buttons[])
+{
+	uint8_t i;
+	uint8_t packet = 0;
+	
+	for (i = 0; i < NUM_BUTTONS; i++)
 	{
-		button->status = ON;
+		if (buttons[i].status == ON)
+		{
+			packet = i;
+			packet <<= 4;
+			packet |= 0x01;
+		}
 	}
-	else
-	{
-		button->status = OFF;
-	}
-	*/
+	return packet;
 }
 /* USER CODE END 4 */
 
