@@ -20,7 +20,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "i2c.h"
+#include "i2s.h"
+#include "spi.h"
+#include "tim.h"
+#include "usart.h"
 #include "usb_host.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,9 +42,14 @@
 /* USER CODE BEGIN PD */
 #define OFF 0
 #define ON 1
+#define BYTE_SIZE 8
 #define NUM_BUTTONS 4
-#define NUM_RADIO_PACKETS 6
 #define DEBOUNCE_DELAY_MS 100
+#define RADIO_PACKET_SIZE 19
+#define NUM_RADIO_PACKETS 6
+#define RADIO_HIGH_US 500
+#define RADIO_LOW_US 200
+#define RADIO_PACKET_DELAY_US 1000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,13 +58,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
-
-I2S_HandleTypeDef hi2s3;
-
-SPI_HandleTypeDef hspi1;
-
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 typedef struct
@@ -69,11 +73,6 @@ button;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_I2S3_Init(void);
-static void MX_SPI1_Init(void);
-static void MX_USART2_UART_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
@@ -83,12 +82,14 @@ void Buttons_Init(button buttons[]);
 void Read_Button(button* button);
 uint8_t Encode_UART_Packet(button buttons[]);
 void LED_Debug(button buttons[]);
-uint32_t Encode_Radio_Packet(uint8_t button_id);
+uint8_t Encode_Radio_Packet(uint8_t button_id);
+void Send_High_100us(void);
+// void Send_Radio_Packet(uint8_t radio_packet)
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+volatile uint8_t counter_25us;
 /* USER CODE END 0 */
 
 /**
@@ -98,11 +99,7 @@ uint32_t Encode_Radio_Packet(uint8_t button_id);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	button buttons[NUM_BUTTONS];
-	uint32_t ms_counter = Ms_Tick();
-	uint8_t i, UART_packet;
-	uint32_t radio_packet;
-	uint32_t* radio_packet_ptr;
+	
   /* USER CODE END 1 */
   
 
@@ -128,9 +125,14 @@ int main(void)
   MX_I2S3_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
-  MX_USB_HOST_Init();
+  //MX_USB_HOST_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+	HAL_TIM_Base_Start_IT(&htim3);
+	button buttons[NUM_BUTTONS];
 	Buttons_Init(buttons);
+	uint32_t ms_counter = Ms_Tick();
+	uint8_t i, j, UART_packet, radio_packet;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -138,7 +140,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+    //MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
 		if (Ms_Tick() - ms_counter > 0)
@@ -150,18 +152,23 @@ int main(void)
 			UART_packet = Encode_UART_Packet(buttons);
 			HAL_UART_Transmit(&huart2, &UART_packet, 1, 10);
 			
-			/*
-			for (i = 0; i < NUM_BUTTONS; i++)
-			{
-				if (buttons[i].radio_flag == ON)
-				{
-					radio_packet = Encode_Radio_Packet(i);
-					Send_Radio_Packet(radio_packet, NUM_RADIO_PACKETS);
-				}
-			}
-			*/
 			ms_counter++;
 		}
+		Send_High_100us();
+		/*
+		for (i = 0; i < NUM_BUTTONS; i++)
+		{
+			if (buttons[i].radio_flag == ON)
+			{
+				radio_packet = Encode_Radio_Packet(i);
+				for (j = 0; j < NUM_RADIO_PACKETS; j++)
+				{
+					Send_Radio_Packet(radio_packet);
+				}
+				buttons[i].radio_flag == OFF;
+			}
+		}
+		*/
   }
   /* USER CODE END 3 */
 }
@@ -216,244 +223,16 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief I2S3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2S3_Init(void)
-{
-
-  /* USER CODE BEGIN I2S3_Init 0 */
-
-  /* USER CODE END I2S3_Init 0 */
-
-  /* USER CODE BEGIN I2S3_Init 1 */
-
-  /* USER CODE END I2S3_Init 1 */
-  hi2s3.Instance = SPI3;
-  hi2s3.Init.Mode = I2S_MODE_MASTER_TX;
-  hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
-  hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
-  hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_96K;
-  hi2s3.Init.CPOL = I2S_CPOL_LOW;
-  hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
-  if (HAL_I2S_Init(&hi2s3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2S3_Init 2 */
-
-  /* USER CODE END I2S3_Init 2 */
-
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
-
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 9600;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS_I2C_SPI_GPIO_Port, CS_I2C_SPI_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin 
-                          |Audio_RST_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : GPIO_Input_Pin GPIO_InputE4_Pin GPIO_InputE5_Pin GPIO_InputE6_Pin */
-  GPIO_InitStruct.Pin = GPIO_Input_Pin|GPIO_InputE4_Pin|GPIO_InputE5_Pin|GPIO_InputE6_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : CS_I2C_SPI_Pin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CS_I2C_SPI_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : OTG_FS_PowerSwitchOn_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(OTG_FS_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PDM_OUT_Pin */
-  GPIO_InitStruct.Pin = PDM_OUT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-  HAL_GPIO_Init(PDM_OUT_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : BOOT1_Pin */
-  GPIO_InitStruct.Pin = BOOT1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BOOT1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : CLK_IN_Pin */
-  GPIO_InitStruct.Pin = CLK_IN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-  HAL_GPIO_Init(CLK_IN_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : LD4_Pin LD3_Pin LD5_Pin LD6_Pin 
-                           Audio_RST_Pin */
-  GPIO_InitStruct.Pin = LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin 
-                          |Audio_RST_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : OTG_FS_OverCurrent_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_OverCurrent_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : MEMS_INT2_Pin */
-  GPIO_InitStruct.Pin = MEMS_INT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
-
-}
-
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	HAL_GPIO_TogglePin(GPIOD, LD3_Pin);
+  if (htim->Instance == TIM3)
+	{
+		counter_25us++;
+	}
+}
+
 uint32_t Ms_Tick(void)
 {
 	return HAL_GetTick();
@@ -497,18 +276,18 @@ void Read_Button(button* button)
 uint8_t Encode_UART_Packet(button buttons[])
 {
 	uint8_t i;
-	uint8_t packet = 0;
+	uint8_t UART_packet = 0;
 	
 	for (i = 0; i < NUM_BUTTONS; i++)
 	{
 		if (buttons[i].status == ON)
 		{
-			packet = i;
-			packet <<= 4;
-			packet |= 0x01;
+			UART_packet = i;
+			UART_packet <<= BYTE_SIZE / 2;
+			UART_packet |= 0x01;
 		}
 	}
-	return packet;
+	return UART_packet;
 }
 
 void LED_Debug(button buttons[])
@@ -538,16 +317,93 @@ void LED_Debug(button buttons[])
 		}
 }
 
-uint32_t Encode_Radio_Packet(uint8_t button_id)
+uint8_t Encode_Radio_Packet(uint8_t button_id)
 {
-	uint32_t packet = 0;
+	uint8_t radio_packet = 0;
 	
-	packet = (uint32_t) button_id;
-	packet <<= 3;
-	packet |= 1;
+	radio_packet = button_id;
+	radio_packet <<= 3;
+	radio_packet |= 1;
 	
-	return packet;
+	return radio_packet;
 }
+
+void Send_High_100us(void)
+{
+	counter_25us = 0;
+	HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_SET);
+	while (counter_25us <= 4)
+	{
+		// Wait
+	}
+	HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_RESET);
+	counter_25us = 0;
+	while (counter_25us <= 4)
+	{
+		// Wait
+	}
+}
+
+/*
+void Send_Radio_Bit(uint8_t status, uint16_t time_us)
+{
+	if (status == ON)
+	{
+		HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_SET);
+	}
+	else
+	{
+		HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_RESET);
+	}
+	counter_25us = 0;
+}
+*/
+/*
+void Send_Radio_Packet(uint8_t radio_packet)
+{
+	uint8_t i;
+	for (i = 0; i < BYTE_SIZE; i++)
+	{
+		if (radio_packet & 1)
+		{
+			send_radio_one_flag = ON;
+		}
+		else
+		{
+			send_radio_zero_flag = ON;
+		}
+		radio_packet >>= 1;
+	}
+	for (i = 0; i < RADIO_PACKET_SIZE - BYTE_SIZE; i++)
+	{
+		Send_Radio_Zero()
+	}
+	Send_Radio_Packet_Delay();
+}
+*/
+/*
+void Send_Radio_Packet(uint8_t radio_packet)
+{
+	uint8_t i;
+	for (i = 0; i < BYTE_SIZE; i++)
+	{
+		if (radio_packet & 1)
+		{
+			send_radio_one_flag = ON;
+		}
+		else
+		{
+			send_radio_zero_flag = ON;
+		}
+		radio_packet >>= 1;
+	}
+	for (i = 0; i < RADIO_PACKET_SIZE - BYTE_SIZE; i++)
+	{
+		Send_Radio_Zero()
+	}
+	Send_Radio_Packet_Delay();
+}
+*/
 /* USER CODE END 4 */
 
 /**

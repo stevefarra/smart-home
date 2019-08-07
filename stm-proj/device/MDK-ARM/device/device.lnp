@@ -1,6 +1,12 @@
 --cpu=Cortex-M4.fp
 "device\startup_stm32f407xx.o"
 "device\main.o"
+"device\gpio.o"
+"device\i2c.o"
+"device\i2s.o"
+"device\spi.o"
+"device\tim.o"
+"device\usart.o"
 "device\usb_host.o"
 "device\usbh_conf.o"
 "device\usbh_platform.o"
