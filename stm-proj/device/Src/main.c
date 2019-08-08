@@ -47,6 +47,7 @@
 #define DEBOUNCE_DELAY_MS 100
 #define RADIO_PACKET_SIZE 19
 #define NUM_RADIO_PACKETS 6
+#define COUNTER_INC_US 25
 #define RADIO_HIGH_US 500
 #define RADIO_LOW_US 200
 #define RADIO_PACKET_DELAY_US 1000
@@ -90,6 +91,7 @@ void Send_High_100us(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile uint8_t counter_25us;
+volatile uint8_t send_radio_one_flag;
 /* USER CODE END 0 */
 
 /**
@@ -154,17 +156,19 @@ int main(void)
 			
 			ms_counter++;
 		}
-		Send_High_100us();
+		
+		if (buttons[0].radio_flag == ON)
+		{
+			buttons[0].radio_flag = OFF;
+			send_radio_one_flag = ON;
+		}
 		/*
+		radio_packet = 0;
 		for (i = 0; i < NUM_BUTTONS; i++)
 		{
 			if (buttons[i].radio_flag == ON)
 			{
 				radio_packet = Encode_Radio_Packet(i);
-				for (j = 0; j < NUM_RADIO_PACKETS; j++)
-				{
-					Send_Radio_Packet(radio_packet);
-				}
 				buttons[i].radio_flag == OFF;
 			}
 		}
@@ -226,10 +230,26 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	HAL_GPIO_TogglePin(GPIOD, LD3_Pin);
   if (htim->Instance == TIM3)
 	{
 		counter_25us++;
+		if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET)
+		{
+			if (counter_25us > (RADIO_HIGH_US/COUNTER_INC_US)-1)
+			{
+				counter_25us = 0;
+				HAL_GPIO_TogglePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin);
+				send_radio_one_flag = 0;
+			}
+		}
+		else
+		{
+			if (counter_25us > (RADIO_LOW_US/COUNTER_INC_US)-1)
+			{
+				counter_25us = 0;
+				HAL_GPIO_TogglePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin);
+			}
+		}
 	}
 }
 
@@ -356,29 +376,6 @@ void Send_Radio_Bit(uint8_t status, uint16_t time_us)
 		HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_RESET);
 	}
 	counter_25us = 0;
-}
-*/
-/*
-void Send_Radio_Packet(uint8_t radio_packet)
-{
-	uint8_t i;
-	for (i = 0; i < BYTE_SIZE; i++)
-	{
-		if (radio_packet & 1)
-		{
-			send_radio_one_flag = ON;
-		}
-		else
-		{
-			send_radio_zero_flag = ON;
-		}
-		radio_packet >>= 1;
-	}
-	for (i = 0; i < RADIO_PACKET_SIZE - BYTE_SIZE; i++)
-	{
-		Send_Radio_Zero()
-	}
-	Send_Radio_Packet_Delay();
 }
 */
 /*
