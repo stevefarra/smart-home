@@ -78,12 +78,11 @@ void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
 uint32_t Ms_Tick(void);
-void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
-void Buttons_Init(button buttons[]);
-void Read_Button(button* button);
-uint8_t Encode_UART_Packet(button buttons[]);
-uint8_t Encode_Radio_Packet(uint8_t button_id);
-void LED_Debug(button buttons[]);
+void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
+void Buttons_Init(void);
+void Read_Button(button button);
+uint8_t Encode_UART_Packet(void);
+void LED_Debug(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -129,9 +128,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim3);
 	button buttons[NUM_BUTTONS];
-	Buttons_Init(buttons);
+	Buttons_Init();
 	uint32_t ms_counter = Ms_Tick();
-	uint8_t i, j, UART_packet, radio_packet;
+	uint8_t i, UART_packet;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,9 +145,9 @@ int main(void)
 		{
 			for (i = 0; i < NUM_BUTTONS; i++)
 			{
-				Read_Button(&buttons[i]);
+				Read_Button(buttons[i]);
 			}
-			UART_packet = Encode_UART_Packet(buttons);
+			UART_packet = Encode_UART_Packet();
 			HAL_UART_Transmit(&huart2, &UART_packet, 1, 10);
 			
 			ms_counter++;
@@ -221,42 +220,40 @@ uint32_t Ms_Tick(void)
 	return HAL_GetTick();
 }
 
-void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
+void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
 {
-	button->GPIO_bank = GPIO_bank;
-	button->GPIO_pin = GPIO_pin;
-	button->counter = 0;
-	button->status = OFF;
-	button->radio_flag = OFF;
+	buttons[i].GPIO_bank = GPIO_bank;
+	buttons[i].GPIO_pin = GPIO_pin;
+	buttons[i].counter = 0;
+	buttons[i].status = OFF;
 }
 
-void Buttons_Init(button buttons[])
+void Buttons_Init(void)
 {
-	Button_Init(&buttons[0], GPIOE, GPIO_Input_Pin);   // PE2
-	Button_Init(&buttons[1], GPIOE, GPIO_InputE4_Pin); // PE4
-	Button_Init(&buttons[2], GPIOE, GPIO_InputE5_Pin); // PE5
-	Button_Init(&buttons[3], GPIOE, GPIO_InputE6_Pin); // PE6
+	Button_Init(0, GPIOE, GPIO_Input_Pin);   // PE2
+	Button_Init(1, GPIOE, GPIO_InputE4_Pin); // PE4
+	Button_Init(2, GPIOE, GPIO_InputE5_Pin); // PE5
+	Button_Init(3, GPIOE, GPIO_InputE6_Pin); // PE6
 }
 
-void Read_Button(button* button)
+void Read_Button(button button)
 {
-	if (HAL_GPIO_ReadPin(button->GPIO_bank, button->GPIO_pin) == GPIO_PIN_SET)
+	if (HAL_GPIO_ReadPin(button.GPIO_bank, button.GPIO_pin) == GPIO_PIN_SET)
 	{
-		button->counter++;
+		button.counter++;
 	}
 	else
 	{
-		button->status = OFF;
-		button->counter = 0;
+		button.status = OFF;
+		button.counter = 0;
 	}
-	if (button->counter == DEBOUNCE_DELAY_MS)
+	if (button.counter == DEBOUNCE_DELAY_MS)
 	{
-		button->status = ON;
-		button->radio_flag = ON;
+		button.status = ON;
 	}
 }
 
-uint8_t Encode_UART_Packet(button buttons[])
+uint8_t Encode_UART_Packet(void)
 {
 	uint8_t i;
 	uint8_t UART_packet = 0;
@@ -273,18 +270,7 @@ uint8_t Encode_UART_Packet(button buttons[])
 	return UART_packet;
 }
 
-uint8_t Encode_Radio_Packet(uint8_t button_id)
-{
-	uint8_t radio_packet = 0;
-	
-	radio_packet = button_id;
-	radio_packet <<= 3;
-	radio_packet |= 1;
-	
-	return radio_packet;
-}
-
-void LED_Debug(button buttons[])
+void LED_Debug(void)
 {
 	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
 		{
