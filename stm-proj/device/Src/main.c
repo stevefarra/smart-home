@@ -82,16 +82,13 @@ void Button_Init(button* button, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(button buttons[]);
 void Read_Button(button* button);
 uint8_t Encode_UART_Packet(button buttons[]);
-void LED_Debug(button buttons[]);
 uint8_t Encode_Radio_Packet(uint8_t button_id);
-void Send_High_100us(void);
-// void Send_Radio_Packet(uint8_t radio_packet)
+void LED_Debug(button buttons[]);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile uint8_t counter_25us;
-volatile uint8_t send_radio_one_flag;
 /* USER CODE END 0 */
 
 /**
@@ -156,23 +153,6 @@ int main(void)
 			
 			ms_counter++;
 		}
-		
-		if (buttons[0].radio_flag == ON)
-		{
-			buttons[0].radio_flag = OFF;
-			send_radio_one_flag = ON;
-		}
-		/*
-		radio_packet = 0;
-		for (i = 0; i < NUM_BUTTONS; i++)
-		{
-			if (buttons[i].radio_flag == ON)
-			{
-				radio_packet = Encode_Radio_Packet(i);
-				buttons[i].radio_flag == OFF;
-			}
-		}
-		*/
   }
   /* USER CODE END 3 */
 }
@@ -233,23 +213,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM3)
 	{
 		counter_25us++;
-		if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET)
-		{
-			if (counter_25us > (RADIO_HIGH_US/COUNTER_INC_US)-1)
-			{
-				counter_25us = 0;
-				HAL_GPIO_TogglePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin);
-				send_radio_one_flag = 0;
-			}
-		}
-		else
-		{
-			if (counter_25us > (RADIO_LOW_US/COUNTER_INC_US)-1)
-			{
-				counter_25us = 0;
-				HAL_GPIO_TogglePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin);
-			}
-		}
 	}
 }
 
@@ -310,6 +273,17 @@ uint8_t Encode_UART_Packet(button buttons[])
 	return UART_packet;
 }
 
+uint8_t Encode_Radio_Packet(uint8_t button_id)
+{
+	uint8_t radio_packet = 0;
+	
+	radio_packet = button_id;
+	radio_packet <<= 3;
+	radio_packet |= 1;
+	
+	return radio_packet;
+}
+
 void LED_Debug(button buttons[])
 {
 	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
@@ -336,72 +310,6 @@ void LED_Debug(button buttons[])
 			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
 		}
 }
-
-uint8_t Encode_Radio_Packet(uint8_t button_id)
-{
-	uint8_t radio_packet = 0;
-	
-	radio_packet = button_id;
-	radio_packet <<= 3;
-	radio_packet |= 1;
-	
-	return radio_packet;
-}
-
-void Send_High_100us(void)
-{
-	counter_25us = 0;
-	HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_SET);
-	while (counter_25us <= 4)
-	{
-		// Wait
-	}
-	HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_RESET);
-	counter_25us = 0;
-	while (counter_25us <= 4)
-	{
-		// Wait
-	}
-}
-
-/*
-void Send_Radio_Bit(uint8_t status, uint16_t time_us)
-{
-	if (status == ON)
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_Output_Pin, GPIO_PIN_RESET);
-	}
-	counter_25us = 0;
-}
-*/
-/*
-void Send_Radio_Packet(uint8_t radio_packet)
-{
-	uint8_t i;
-	for (i = 0; i < BYTE_SIZE; i++)
-	{
-		if (radio_packet & 1)
-		{
-			send_radio_one_flag = ON;
-		}
-		else
-		{
-			send_radio_zero_flag = ON;
-		}
-		radio_packet >>= 1;
-	}
-	for (i = 0; i < RADIO_PACKET_SIZE - BYTE_SIZE; i++)
-	{
-		Send_Radio_Zero()
-	}
-	Send_Radio_Packet_Delay();
-}
-*/
-/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
