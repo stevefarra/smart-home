@@ -63,11 +63,10 @@
 /* USER CODE BEGIN PV */
 typedef struct
 {
-	GPIO_TypeDef* GPIO_bank;
+	GPIO_TypeDef* GPIO_port;
 	uint16_t GPIO_pin;
 	uint64_t counter; // Used for debouncing
 	uint8_t status;   // Indicates whether or not the button is pressed
-	uint8_t radio_flag;
 }
 button;
 /* USER CODE END PV */
@@ -220,9 +219,9 @@ uint32_t Ms_Tick(void)
 	return HAL_GetTick();
 }
 
-void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
+void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_port, uint16_t GPIO_pin)
 {
-	buttons[i].GPIO_bank = GPIO_bank;
+	buttons[i].GPIO_port = GPIO_port;
 	buttons[i].GPIO_pin = GPIO_pin;
 	buttons[i].counter = 0;
 	buttons[i].status = OFF;
@@ -230,15 +229,15 @@ void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin)
 
 void Buttons_Init(void)
 {
-	Button_Init(0, GPIOE, GPIO_Input_Pin);   // PE2
-	Button_Init(1, GPIOE, GPIO_InputE4_Pin); // PE4
-	Button_Init(2, GPIOE, GPIO_InputE5_Pin); // PE5
-	Button_Init(3, GPIOE, GPIO_InputE6_Pin); // PE6
+	Button_Init(0, GPIO_Input_GPIO_Port, GPIO_Input_Pin);   // PE2
+	Button_Init(1, GPIO_Input_GPIO_Port, GPIO_InputE4_Pin); // PE4
+	Button_Init(2, GPIO_Input_GPIO_Port, GPIO_InputE5_Pin); // PE5
+	Button_Init(3, GPIO_Input_GPIO_Port, GPIO_InputE6_Pin); // PE6
 }
 
 void Read_Button(button button)
 {
-	if (HAL_GPIO_ReadPin(button.GPIO_bank, button.GPIO_pin) == GPIO_PIN_SET)
+	if (HAL_GPIO_ReadPin(button.GPIO_port, button.GPIO_pin) == GPIO_PIN_SET)
 	{
 		button.counter++;
 	}
@@ -274,26 +273,26 @@ void LED_Debug(void)
 {
 	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
 		{
-			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		}
 		else if (buttons[1].status == ON)
 		{
-			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET);
 		}
 		else if (buttons[2].status == ON)
 		{
-			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
 		}
 		else if (buttons[3].status == ON)
 		{
-			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
 		}
 		else
 		{
-			HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOD, LD6_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
 		}
 }
 
