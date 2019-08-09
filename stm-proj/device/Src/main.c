@@ -42,11 +42,13 @@
 /* USER CODE BEGIN PD */
 #define OFF 0
 #define ON 1
-#define BYTE_SIZE 8
+
 #define NUM_BUTTONS 4
+#define UART_PACKET_SIZE 8
 #define DEBOUNCE_DELAY_MS 100
-#define RADIO_PACKET_SIZE 19
+
 #define NUM_RADIO_PACKETS 6
+#define RADIO_PACKET_SIZE 19
 #define COUNTER_INC_US 25
 #define RADIO_HIGH_US 500
 #define RADIO_LOW_US 200
@@ -126,9 +128,11 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim3);
+
 	button buttons[NUM_BUTTONS];
 	Buttons_Init();
 	uint32_t ms_counter = Ms_Tick();
+
 	uint8_t i, UART_packet;
   /* USER CODE END 2 */
 
@@ -140,6 +144,7 @@ int main(void)
     //MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
+    /* Executes every 1 ms */
 		if (Ms_Tick() - ms_counter > 0)
 		{
 			for (i = 0; i < NUM_BUTTONS; i++)
@@ -206,6 +211,10 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief  This function is used for interrupt service routines.
+  * @retval None
+  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM3)
@@ -214,11 +223,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 }
 
+/**
+  * @brief  This function is used as a millisecond counter.
+  * @retval A tick value in milliseconds
+  */
 uint32_t Ms_Tick(void)
 {
 	return HAL_GetTick();
 }
 
+/**
+  * @brief  This funciton is used to initialize a struct button.
+  * @retval None
+  */
 void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_port, uint16_t GPIO_pin)
 {
 	buttons[i].GPIO_port = GPIO_port;
@@ -227,6 +244,11 @@ void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_port, uint16_t GPIO_pin)
 	buttons[i].status = OFF;
 }
 
+/**
+  * @brief  This function is used to inialize the global variable
+  *         buttons, an array of struct buttons.
+  * @retval None
+  */
 void Buttons_Init(void)
 {
 	Button_Init(0, GPIO_Input_GPIO_Port, GPIO_Input_Pin);   // PE2
@@ -235,6 +257,14 @@ void Buttons_Init(void)
 	Button_Init(3, GPIO_Input_GPIO_Port, GPIO_InputE6_Pin); // PE6
 }
 
+/**
+  * @brief  This function is used to read the appropriate GPIO pins and
+  *         update the struct button accordingly.
+  *         When the GPIO pin has been pressed for DEBOUNCE_DELAY_MS ms,
+  *         the final if statement is entered once to update the status
+  *         of the button.
+  * @retval None
+  */
 void Read_Button(button button)
 {
 	if (HAL_GPIO_ReadPin(button.GPIO_port, button.GPIO_pin) == GPIO_PIN_SET)
@@ -262,13 +292,20 @@ uint8_t Encode_UART_Packet(void)
 		if (buttons[i].status == ON)
 		{
 			UART_packet = i;
-			UART_packet <<= BYTE_SIZE / 2;
+			UART_packet <<= UART_PACKET_SIZE / 2;
 			UART_packet |= 0x01;
 		}
 	}
 	return UART_packet;
 }
 
+/**
+  * @brief  This function is used for debugging GPIO input pins.
+  *         When the status field of a struct button is ON,
+  *         an LED lights up, with priority given to the lowest 
+  *         struct button in the array. 
+  * @retval None
+  */
 void LED_Debug(void)
 {
 	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
