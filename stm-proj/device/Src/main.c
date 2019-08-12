@@ -81,7 +81,7 @@ void MX_USB_HOST_Process(void);
 uint32_t Ms_Tick(void);
 void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(void);
-void Read_Button(button button);
+void Read_Button(uint8_t i);
 uint8_t Encode_UART_Packet(void);
 void LED_Debug(void);
 /* USER CODE END PFP */
@@ -148,7 +148,7 @@ int main(void)
 		{
 			for (i = 0; i < NUM_BUTTONS; i++)
 			{
-				Read_Button(buttons[i]);
+				Read_Button(i);
 			}
 			UART_packet = Encode_UART_Packet();
 			HAL_UART_Transmit(&huart2, &UART_packet, 1, 10);
@@ -266,20 +266,20 @@ void Buttons_Init(void)
   *         of the button.
   * @retval None
   */
-void Read_Button(button button)
+void Read_Button(uint8_t i)
 {
-	if (HAL_GPIO_ReadPin(button.GPIO_port, button.GPIO_pin) == GPIO_PIN_SET)
+	if (HAL_GPIO_ReadPin(buttons[i].GPIO_port, buttons[i].GPIO_pin) == GPIO_PIN_SET)
 	{
-		button.counter++;
+		buttons[i].counter++;
 	}
 	else
 	{
-		button.status = OFF;
-		button.counter = 0;
+		buttons[i].status = OFF;
+		buttons[i].counter = 0;
 	}
-	if (button.counter == DEBOUNCE_DELAY_MS)
+	if (buttons[i].counter == DEBOUNCE_DELAY_MS)
 	{
-		button.status = ON;
+		buttons[i].status = ON;
 	}
 }
 
