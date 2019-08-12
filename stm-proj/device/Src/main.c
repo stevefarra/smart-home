@@ -89,6 +89,7 @@ void LED_Debug(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile uint8_t counter_25us;
+button buttons[NUM_BUTTONS];
 /* USER CODE END 0 */
 
 /**
@@ -128,11 +129,9 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim3);
-
-	button buttons[NUM_BUTTONS];
 	Buttons_Init();
-	uint32_t ms_counter = Ms_Tick();
 
+	uint32_t ms_counter = Ms_Tick();
 	uint8_t i, UART_packet;
   /* USER CODE END 2 */
 
@@ -156,6 +155,8 @@ int main(void)
 			
 			ms_counter++;
 		}
+		
+		LED_Debug();
   }
   /* USER CODE END 3 */
 }
