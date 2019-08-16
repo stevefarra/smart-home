@@ -82,7 +82,7 @@ uint32_t Ms_Tick(void);
 void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(void);
 void Read_Button(uint8_t i);
-uint8_t Encode_UART_Packet(void);
+void Encode_UART_Packets(uint8_t UART_Packets[]);
 void LED_Debug(void);
 /* USER CODE END PFP */
 
@@ -132,7 +132,8 @@ int main(void)
 	Buttons_Init();
 	uint32_t ms_counter = Ms_Tick();
 	uint32_t sec_counter = Ms_Tick();
-	uint8_t i, UART_packet;
+	uint8_t i;
+	uint8_t UART_packets[NUM_BUTTONS];
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -150,16 +151,13 @@ int main(void)
 			{
 				Read_Button(i);
 			}
-			UART_packet = Encode_UART_Packet();
-			HAL_UART_Transmit(&huart2, &UART_packet, 1, 10);
-			
 			ms_counter++;
 		}
 		/* Executes every 1 sec */
 		if (Ms_Tick() - sec_counter > 1000)
 		{
-			
-			
+			Encode_UART_Packets(UART_packets);
+			HAL_UART_Transmit(&huart2, UART_packets, NUM_BUTTONS, 10);
 			sec_counter = Ms_Tick();
 		}
 		
@@ -281,30 +279,26 @@ void Read_Button(uint8_t i)
 	}
 	else
 	{
-		buttons[i].status = OFF;
 		buttons[i].counter = 0;
 	}
 	if (buttons[i].counter == DEBOUNCE_DELAY_MS)
 	{
-		buttons[i].status = ON;
+		buttons[i].status ^= 1;
 	}
 }
 
-uint8_t Encode_UART_Packet(void)
+void Encode_UART_Packets(uint8_t UART_Packets[])
 {
-	uint8_t i;
-	uint8_t UART_packet = 0;
-	
+	int i;
 	for (i = 0; i < NUM_BUTTONS; i++)
 	{
+		UART_Packets[i] = i;
+		UART_Packets[i] <<= 1;
 		if (buttons[i].status == ON)
 		{
-			UART_packet = i;
-			UART_packet <<= UART_PACKET_SIZE / 2;
-			UART_packet |= 0x01;
+			UART_Packets[i] |= 1;
 		}
 	}
-	return UART_packet;
 }
 
 /**
