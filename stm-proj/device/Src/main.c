@@ -131,6 +131,7 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim3);
 	Buttons_Init();
 	uint32_t ms_counter = Ms_Tick();
+	uint32_t sec_counter = Ms_Tick();
 	uint8_t i, UART_packet;
   /* USER CODE END 2 */
 
@@ -153,6 +154,13 @@ int main(void)
 			HAL_UART_Transmit(&huart2, &UART_packet, 1, 10);
 			
 			ms_counter++;
+		}
+		/* Executes every 1 sec */
+		if (Ms_Tick() - sec_counter > 1000)
+		{
+			
+			
+			sec_counter = Ms_Tick();
 		}
 		
 		LED_Debug();
