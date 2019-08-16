@@ -130,7 +130,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim3);
 	Buttons_Init();
-
 	uint32_t ms_counter = Ms_Tick();
 	uint8_t i, UART_packet;
   /* USER CODE END 2 */
@@ -313,23 +312,32 @@ void LED_Debug(void)
 		{
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		}
-		else if (buttons[1].status == ON)
+	else
+		{
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+		}
+	if (buttons[1].status == ON)
 		{
 			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET);
 		}
-		else if (buttons[2].status == ON)
+	else
+		{
+			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
+		}
+	if (buttons[2].status == ON)
 		{
 			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
 		}
-		else if (buttons[3].status == ON)
+	else
+		{
+			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
+		}
+	if (buttons[3].status == ON)
 		{
 			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
 		}
-		else
+	else
 		{
-			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
 		}
 }
