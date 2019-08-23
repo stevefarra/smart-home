@@ -54,6 +54,7 @@
 #define RADIO_0_US 250
 #define RADIO_PACKET_DELAY_US 1000
 
+#define IDLE 0;
 #define START 1
 #define SEND_1_HI 2
 #define SEND_0_HI 3
@@ -79,8 +80,6 @@ typedef struct
 	uint16_t GPIO_pin;
 	uint64_t counter; // Used for debouncing
 	uint8_t status;   // Indicates whether or not the button is pressed
-	uint8_t radio_state;
-	uint32_t radio_packet;
 }
 button;
 /* USER CODE END PV */
@@ -104,7 +103,7 @@ void LED_Debug(void);
 button buttons[NUM_BUTTONS];
 
 volatile uint8_t counter_25us;
-uint8_t state;
+uint8_t state = IDLE;
 uint8_t radio_flag;
 uint32_t radio_packet;
 uint32_t radio_packet_buffer;
@@ -305,7 +304,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			radio_packet_buffer >>= 1;
 			num_bit_sends++;
 			counter_25us = 0;
-			if (num_bit_sends < 19)
+			if (num_bit_sends < RADIO_PACKET_SIZE)
 			{
 				if (radio_packet_buffer & 1)
 				{
@@ -324,7 +323,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (state == INC_NUM_PACKET_SENDS)
 		{
 			num_packet_sends++;
-			if (num_packet_sends < 6)
+			if (num_packet_sends < NUM_RADIO_PACKETS)
 			{
 				state = SEND_DELAY;
 			}
@@ -343,6 +342,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (state == FINISH)
 		{
 			num_packet_sends = 0;
+			state = IDLE;
 		}
 	}
 }
@@ -366,7 +366,6 @@ void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_port, uint16_t GPIO_pin)
 	buttons[i].GPIO_pin = GPIO_pin;
 	buttons[i].counter = 0;
 	buttons[i].status = OFF;
-	buttons[i].radio_state = 0;
 }
 
 /**
@@ -429,8 +428,6 @@ void Read_Button(uint8_t i)
 	if (buttons[i].counter == DEBOUNCE_DELAY_MS)
 	{
 		buttons[i].status ^= 1;
-		buttons[i].radio_packet = Encode_Radio_Packet(i);
-		buttons[i].radio_state = 0; // Change later
 	}
 }
 
