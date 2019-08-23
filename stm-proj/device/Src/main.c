@@ -50,9 +50,19 @@
 #define NUM_RADIO_PACKETS 6
 #define RADIO_PACKET_SIZE 19
 #define COUNTER_INC_US 25
-#define RADIO_HIGH_US 500
-#define RADIO_LOW_US 200
+#define RADIO_1_US 500
+#define RADIO_0_US 250
 #define RADIO_PACKET_DELAY_US 1000
+
+#define START 1
+#define SEND_1_HI 2
+#define SEND_0_HI 3
+#define SEND_1_LO 4
+#define SEND_0_LO 5
+#define SHIFT_PACKET 6
+#define INC_NUM_PACKET_SENDS 7
+#define SEND_DELAY 8
+#define FINISH 9
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,6 +79,8 @@ typedef struct
 	uint16_t GPIO_pin;
 	uint64_t counter; // Used for debouncing
 	uint8_t status;   // Indicates whether or not the button is pressed
+	uint8_t radio_state;
+	uint32_t radio_packet;
 }
 button;
 /* USER CODE END PV */
@@ -81,15 +93,23 @@ void MX_USB_HOST_Process(void);
 uint32_t Ms_Tick(void);
 void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_bank, uint16_t GPIO_pin);
 void Buttons_Init(void);
-void Read_Button(uint8_t i);
 void Encode_UART_Packets(uint8_t UART_Packets[]);
+uint32_t Encode_Radio_Packet(uint8_t i);
+void Read_Button(uint8_t i);
 void LED_Debug(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint8_t counter_25us;
 button buttons[NUM_BUTTONS];
+
+volatile uint8_t counter_25us;
+uint8_t state;
+uint8_t radio_flag;
+uint32_t radio_packet;
+uint32_t radio_packet_buffer;
+uint8_t num_bit_sends;
+uint8_t num_packet_sends;
 /* USER CODE END 0 */
 
 /**
@@ -158,9 +178,12 @@ int main(void)
 		{
 			Encode_UART_Packets(UART_packets);
 			HAL_UART_Transmit(&huart2, UART_packets, NUM_BUTTONS, 10);
+			
+			radio_packet = 0x19;
+			state = START;
+			
 			sec_counter = Ms_Tick();
 		}
-		
 		LED_Debug();
   }
   /* USER CODE END 3 */
@@ -226,6 +249,101 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM3)
 	{
 		counter_25us++;
+		
+		if (state == START)
+		{
+			counter_25us = 0;
+			radio_packet_buffer = radio_packet;
+			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_SET);
+			if   (radio_packet_buffer & 1)
+			{
+				state = SEND_1_HI;
+			}
+			else
+			{
+				state = SEND_0_HI;
+			}
+		}
+		if (state == SEND_1_HI)
+		{
+			if (counter_25us > RADIO_1_US/COUNTER_INC_US)
+			{
+				state = SEND_1_LO;
+			}
+		}
+		if (state == SEND_0_HI)
+		{
+			if (counter_25us > RADIO_0_US/COUNTER_INC_US)
+			{
+				state = SEND_0_LO;
+			}
+		}
+		if (state == SEND_1_LO)
+		{
+			if (HAL_GPIO_ReadPin(GPIO_Output_GPIO_Port, GPIO_Output_Pin) == GPIO_PIN_SET)
+			{
+				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
+			}
+			if (counter_25us > (RADIO_1_US/COUNTER_INC_US)*2)
+			{
+				state = SHIFT_PACKET;
+			}
+		}
+		if (state == SEND_0_LO)
+		{
+			if (HAL_GPIO_ReadPin(GPIO_Output_GPIO_Port, GPIO_Output_Pin) == GPIO_PIN_SET)
+			{
+				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
+			}
+			if (counter_25us > (RADIO_0_US/COUNTER_INC_US)*2)
+			{
+				state = SHIFT_PACKET;
+			}
+		}
+		if (state == SHIFT_PACKET)
+		{
+			radio_packet_buffer >>= 1;
+			num_bit_sends++;
+			counter_25us = 0;
+			if (num_bit_sends < 19)
+			{
+				if (radio_packet_buffer & 1)
+				{
+					state = SEND_1_HI;
+				}
+				else
+				{
+					state = SEND_0_HI;
+				}
+			}
+			else
+			{
+				state = INC_NUM_PACKET_SENDS;
+			}
+		}
+		if (state == INC_NUM_PACKET_SENDS)
+		{
+			num_packet_sends++;
+			if (num_packet_sends < 6)
+			{
+				state = SEND_DELAY;
+			}
+			else
+			{
+				state = FINISH;
+			}
+		}
+		if (state == SEND_DELAY)
+		{
+			if (counter_25us > RADIO_PACKET_DELAY_US/COUNTER_INC_US)
+			{
+				state = START;
+			}
+		}
+		if (state == FINISH)
+		{
+			num_packet_sends = 0;
+		}
 	}
 }
 
@@ -239,7 +357,7 @@ uint32_t Ms_Tick(void)
 }
 
 /**
-  * @brief  This funciton is used to initialize a struct button.
+  * @brief  This function is used to initialize a struct button.
   * @retval None
   */
 void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_port, uint16_t GPIO_pin)
@@ -248,6 +366,7 @@ void Button_Init(uint8_t i, GPIO_TypeDef* GPIO_port, uint16_t GPIO_pin)
 	buttons[i].GPIO_pin = GPIO_pin;
 	buttons[i].counter = 0;
 	buttons[i].status = OFF;
+	buttons[i].radio_state = 0;
 }
 
 /**
@@ -261,6 +380,32 @@ void Buttons_Init(void)
 	Button_Init(1, GPIO_Input_GPIO_Port, GPIO_InputE4_Pin); // PE4
 	Button_Init(2, GPIO_Input_GPIO_Port, GPIO_InputE5_Pin); // PE5
 	Button_Init(3, GPIO_Input_GPIO_Port, GPIO_InputE6_Pin); // PE6
+}
+
+void Encode_UART_Packets(uint8_t UART_Packets[])
+{
+	int i;
+	for (i = 0; i < NUM_BUTTONS; i++)
+	{
+		UART_Packets[i] = i;
+		UART_Packets[i] <<= 1;
+		if (buttons[i].status == ON)
+		{
+			UART_Packets[i] |= 1;
+		}
+	}
+}
+
+uint32_t Encode_Radio_Packet(uint8_t i)
+{
+	uint32_t radio_packet;
+	radio_packet = i;
+	radio_packet <<= 3;
+	if (buttons[i].status == ON)
+	{
+		radio_packet |= 1;
+	}
+	return radio_packet;
 }
 
 /**
@@ -284,20 +429,8 @@ void Read_Button(uint8_t i)
 	if (buttons[i].counter == DEBOUNCE_DELAY_MS)
 	{
 		buttons[i].status ^= 1;
-	}
-}
-
-void Encode_UART_Packets(uint8_t UART_Packets[])
-{
-	int i;
-	for (i = 0; i < NUM_BUTTONS; i++)
-	{
-		UART_Packets[i] = i;
-		UART_Packets[i] <<= 1;
-		if (buttons[i].status == ON)
-		{
-			UART_Packets[i] |= 1;
-		}
+		buttons[i].radio_packet = Encode_Radio_Packet(i);
+		buttons[i].radio_state = 0; // Change later
 	}
 }
 
