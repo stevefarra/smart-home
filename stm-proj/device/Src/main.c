@@ -178,11 +178,15 @@ int main(void)
 			Encode_UART_Packets(UART_packets);
 			HAL_UART_Transmit(&huart2, UART_packets, NUM_BUTTONS, 10);
 			
+			/* DEBUG */
 			radio_packet = 0x19;
 			state = START;
 			
 			sec_counter = Ms_Tick();
 		}
+		// If radio queue is non-empty and state is idle,
+		// Set radio packet to item at front of queue and set state to start
+		
 		LED_Debug();
   }
   /* USER CODE END 3 */
@@ -428,6 +432,7 @@ void Read_Button(uint8_t i)
 	if (buttons[i].counter == DEBOUNCE_DELAY_MS)
 	{
 		buttons[i].status ^= 1;
+		// Add radio packet to radio queue here
 	}
 }
 
