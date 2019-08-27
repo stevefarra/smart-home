@@ -47,7 +47,7 @@
 #define UART_PACKET_SIZE 8
 #define DEBOUNCE_DELAY_MS 100
 
-#define NUM_RADIO_PACKETS 1
+#define NUM_RADIO_PACKETS 6
 #define RADIO_PACKET_SIZE 3
 #define COUNTER_INC_US 25
 #define RADIO_1_US 500
@@ -92,7 +92,6 @@ void LED_Debug(void);
 /* USER CODE BEGIN 0 */
 button buttons[NUM_BUTTONS];
 
-volatile uint8_t counter_25us;
 volatile uint8_t is_radio_packet_ready;
 volatile uint32_t radio_packet;
 volatile int is_going = 0;
@@ -163,20 +162,15 @@ int main(void)
 		/* Executes every 1 sec */
 		if (Ms_Tick() - sec_counter > 999)
 		{
-			if(!is_radio_packet_ready) {
+			if (!is_radio_packet_ready)
+			{
 				radio_packet = 5;
 				is_radio_packet_ready = 1;
 			}
-			sec_counter += 1000;
 			Encode_UART_Packets(UART_packets);
 			HAL_UART_Transmit(&huart2, UART_packets, NUM_BUTTONS, 10);
-			
-			/* DEBUG */
-			
+			sec_counter += 1000;			
 		}
-		// If radio queue is non-empty and state is idle,
-		// Set radio packet to item at front of queue and set state to start
-		
 		LED_Debug();
   }
   /* USER CODE END 3 */
@@ -239,6 +233,7 @@ void SystemClock_Config(void)
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	/* TIM3 is used for the radio transmission FSM */
   if (htim->Instance == TIM3)
 	{
 		static int buffer = 0;
@@ -248,7 +243,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static int counter = 0;
 		static int repeat = 0;
 		static int is_delay = 0;
-		if(is_radio_packet_ready) {
+		
+		if (is_radio_packet_ready)
+		{
 			packet_buffer = radio_packet;
 			buffer = packet_buffer;
 			repeat = 0;
@@ -257,40 +254,61 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			counter = 0;
 			bit_counter = 0;
 			is_transmitting_high = 1;
-			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, 1);
+			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_SET);
 			is_radio_packet_ready = 0;
 		}
-		if(is_going) {
+		if (is_going)
+		{
+			counter++;
+			
 			int delay_ticks;
-			if(buffer & 1)
+			if (buffer & 1)
 				delay_ticks = RADIO_1_US/COUNTER_INC_US;
 			else
 				delay_ticks = RADIO_0_US/COUNTER_INC_US;
-			counter++;
-			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, is_transmitting_high);
-			if(is_transmitting_high && (counter == delay_ticks)) {
+			
+			if (is_transmitting_high)
+			{
+				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_SET);
+			}
+			else
+			{
+				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
+			}
+			
+			if (is_transmitting_high && (counter == delay_ticks))
+			{
 				is_transmitting_high = 0;
 				counter = 0;
-			} else if(!is_transmitting_high && (counter == delay_ticks)) {
+			}
+			else if (!is_transmitting_high && (counter == delay_ticks))
+			{
 				counter = 0;
 				bit_counter++;
 				is_transmitting_high = 1;
 				buffer >>= 1;
-				if(bit_counter == 3) {
+				if (bit_counter == RADIO_PACKET_SIZE)
+				{
 					bit_counter = 0;
 					is_going = 0;
-					if(repeat < 5) {
+					if (repeat < NUM_RADIO_PACKETS - 1)
+					{
 						is_delay = 1;
-					} else {
+					}
+					else
+					{
 						is_delay = 0;
 						repeat = 0;
 					}
 				}
 			}
-		} else if(is_delay) {
+		}
+		else if (is_delay)
+		{
 			is_transmitting_high = 0;
 			counter++;
-			if(counter == 100) {
+			if (counter == 100)
+			{
 				is_transmitting_high = 1;
 				is_going = 1;
 				is_delay = 0;
@@ -298,101 +316,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				repeat++;
 				counter = 0;
 			}
-		} else {
-				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, 0);
-				is_going = 0;
-				repeat = 0;
 		}
-		/*if (state == START)
-		{
-			counter_25us = 0;
-			num_bit_sends = 0;
-			radio_packet_buffer = radio_packet;
-			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_SET);
-			if   (radio_packet_buffer & 1)
-			{
-				state = SEND_1_HI;
-			}
-			else
-			{
-				state = SEND_0_HI;
-			}
-		}
-		else if (state == SEND_1_HI)
-		{
-			if (counter_25us > RADIO_1_US/COUNTER_INC_US)
-			{
-				state = SEND_1_LO;
-			}
-		}
-		else if (state == SEND_0_HI)
-		{
-			if (counter_25us > RADIO_0_US/COUNTER_INC_US)
-			{
-				state = SEND_0_LO;
-			}
-		}
-		else if (state == SEND_1_LO)
+		else
 		{
 			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
-			if (counter_25us > (RADIO_1_US/COUNTER_INC_US)*2)
-			{
-				state = SHIFT_PACKET;
-			}
+			is_going = 0;
+			repeat = 0;
 		}
-		else if (state == SEND_0_LO)
-		{
-			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
-			if (counter_25us > (RADIO_0_US/COUNTER_INC_US)*2)
-			{
-				state = SHIFT_PACKET;
-			}
-		}
-		else if (state == SHIFT_PACKET)
-		{
-			radio_packet_buffer >>= 1;
-			num_bit_sends++;
-			counter_25us = 0;
-			if (num_bit_sends < RADIO_PACKET_SIZE)
-			{
-				if (radio_packet_buffer & 1)
-				{
-					state = SEND_1_HI;
-				}
-				else
-				{
-					state = SEND_0_HI;
-				}
-			}
-			else
-			{
-				state = INC_NUM_PACKET_SENDS;
-			}
-		}
-		else if (state == INC_NUM_PACKET_SENDS)
-		{
-			num_packet_sends++;
-			if (num_packet_sends < NUM_RADIO_PACKETS)
-			{
-				state = SEND_DELAY;
-			}
-			else
-			{
-				state = FINISH;
-			}
-		}
-		else if (state == SEND_DELAY)
-		{
-			if (counter_25us > RADIO_PACKET_DELAY_US/COUNTER_INC_US)
-			{
-				state = START;
-			}
-		}
-		else if (state == FINISH)
-		{
-			num_packet_sends = 0;
-			state = IDLE;
-		}*/
 	}
 }
 
