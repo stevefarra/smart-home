@@ -92,6 +92,7 @@ void LED_Debug(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 button buttons[NUM_BUTTONS];
+uint8_t Rx_buffer;
 
 volatile uint32_t radio_packet;
 volatile uint8_t is_radio_packet_ready = 0;
@@ -132,7 +133,7 @@ int main(void)
   MX_I2S3_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
-  //MX_USB_HOST_Init();
+  MX_USB_HOST_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim3);
@@ -148,7 +149,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    //MX_USB_HOST_Process();
+    MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
     /* Every 1 ms, read the status of each button */
@@ -178,6 +179,8 @@ int main(void)
 				is_radio_packet_ready = 1;
 			}
 		}
+		/* Check for incoming UART data */
+		HAL_UART_Receive_IT(&huart2, &Rx_buffer, 1);
 		/* Display the status of the buttons on the LEDs for debugging purposes */
 		LED_Debug();
   }
@@ -235,8 +238,29 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart->Instance == USART2)
+	{
+		static uint8_t buffer;
+		static uint8_t new_status;
+		static uint8_t id;
+		
+		buffer = Rx_buffer;
+		new_status = buffer & 1;
+		buffer >>= 1;
+		id = buffer;
+		
+		if (buttons[id].status != new_status)
+		{
+			buttons[id].status = new_status;
+			buttons[id].radio_flag = ON;
+		}
+	}
+}
+
 /**
-  * @brief  This function is used for interrupt service routines.
+  * @brief  This function is used for timer interrupt service routines.
   * @retval None
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -244,12 +268,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	/* TIM3 is used for the radio transmission FSM */
   if (htim->Instance == TIM3)
 	{
-		static int buffer = 0;
-		static int packet_buffer = 0;
-		static int bit_counter = 0;
-		static int is_transmitting_high = 0;
-		static int counter = 0;
-		static int repeat = 0;
+		static uint8_t buffer = 0;
+		static uint8_t packet_buffer = 0;
+		static uint8_t bit_counter = 0;
+		static uint8_t is_transmitting_high = 0;
+		static uint8_t counter = 0;
+		static uint8_t repeat = 0;
 		
 		if (is_radio_packet_ready)
 		{
@@ -424,37 +448,37 @@ void Read_Button(uint8_t i)
 void LED_Debug(void)
 {
 	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
-		{
+	{
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-		}
+	}
 	else
-		{
+	{
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-		}
+	}
 	if (buttons[1].status == ON)
-		{
+	{
 			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET);
-		}
+	}
 	else
-		{
+	{
 			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
-		}
+	}
 	if (buttons[2].status == ON)
-		{
+	{
 			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
-		}
+	}
 	else
-		{
+	{
 			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
-		}
+	}
 	if (buttons[3].status == ON)
-		{
+	{
 			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
-		}
+	}
 	else
-		{
+	{
 			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
-		}
+	}
 }
 /* USER CODE END 4 */
 
