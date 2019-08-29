@@ -47,8 +47,8 @@
 #define UART_PACKET_SIZE 8
 #define DEBOUNCE_DELAY_MS 100
 
-#define NUM_RADIO_PACKETS 6
-#define RADIO_PACKET_SIZE 3
+#define NUM_RADIO_PACKETS 2
+#define RADIO_PACKET_SIZE 6
 #define COUNTER_INC_US 25
 #define RADIO_1_US 500
 #define RADIO_0_US 250
@@ -70,6 +70,7 @@ typedef struct
 	uint16_t GPIO_pin;
 	uint64_t counter; // Used for debouncing
 	uint8_t status;   // Indicates whether or not the button is pressed
+	uint8_t radio_flag;
 }
 button;
 /* USER CODE END PV */
@@ -92,10 +93,10 @@ void LED_Debug(void);
 /* USER CODE BEGIN 0 */
 button buttons[NUM_BUTTONS];
 
-volatile uint8_t is_radio_packet_ready;
 volatile uint32_t radio_packet;
-volatile int is_going = 0;
-
+volatile uint8_t is_radio_packet_ready = 0;
+volatile uint8_t is_going = 0;
+volatile uint8_t is_delay = 0;
 /* USER CODE END 0 */
 
 /**
@@ -150,7 +151,7 @@ int main(void)
     //MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
-    /* Executes every 1 ms */
+    /* Every 1 ms, read the status of each button */
 		if (Ms_Tick() - ms_counter > 0)
 		{
 			for (i = 0; i < NUM_BUTTONS; i++)
@@ -159,18 +160,25 @@ int main(void)
 			}
 			ms_counter++;
 		}
-		/* Executes every 1 sec */
+		/* Every 1 sec, encode and transmit the status of the buttons via UART */
 		if (Ms_Tick() - sec_counter > 999)
 		{
-			if (!is_radio_packet_ready)
-			{
-				radio_packet = 5;
-				is_radio_packet_ready = 1;
-			}
 			Encode_UART_Packets(UART_packets);
 			HAL_UART_Transmit(&huart2, UART_packets, NUM_BUTTONS, 10);
 			sec_counter += 1000;			
 		}
+		/* If there is a change to a button, and no other change
+		   is being transmitted, transmit the change via radio */
+		for (i = 0; i < NUM_BUTTONS; i++)
+		{
+			if ((buttons[i].radio_flag == ON) && !(is_radio_packet_ready || is_going || is_delay))
+			{
+				radio_packet = Encode_Radio_Packet(i);
+				buttons[i].radio_flag = OFF;
+				is_radio_packet_ready = 1;
+			}
+		}
+		/* Display the status of the buttons on the LEDs for debugging purposes */
 		LED_Debug();
   }
   /* USER CODE END 3 */
@@ -242,7 +250,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static int is_transmitting_high = 0;
 		static int counter = 0;
 		static int repeat = 0;
-		static int is_delay = 0;
 		
 		if (is_radio_packet_ready)
 		{
@@ -268,13 +275,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				delay_ticks = RADIO_0_US/COUNTER_INC_US;
 			
 			if (is_transmitting_high)
-			{
 				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_SET);
-			}
 			else
-			{
 				HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
-			}
 			
 			if (is_transmitting_high && (counter == delay_ticks))
 			{
@@ -307,7 +310,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		{
 			is_transmitting_high = 0;
 			counter++;
-			if (counter == 100)
+			if (counter == RADIO_PACKET_DELAY_US/COUNTER_INC_US)
 			{
 				is_transmitting_high = 1;
 				is_going = 1;
@@ -407,7 +410,7 @@ void Read_Button(uint8_t i)
 	if (buttons[i].counter == DEBOUNCE_DELAY_MS)
 	{
 		buttons[i].status ^= 1;
-		// Add radio packet to radio queue here
+		buttons[i].radio_flag = ON;
 	}
 }
 
@@ -453,6 +456,7 @@ void LED_Debug(void)
 			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
 		}
 }
+/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
