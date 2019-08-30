@@ -136,8 +136,8 @@ int main(void)
   MX_USB_HOST_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start_IT(&htim3);
 	Buttons_Init();
+	HAL_TIM_Base_Start_IT(&htim3);
 	uint32_t ms_counter = Ms_Tick();
 	uint32_t sec_counter = Ms_Tick();
 	uint8_t i;
@@ -176,7 +176,7 @@ int main(void)
 			{
 				radio_packet = Encode_Radio_Packet(i);
 				buttons[i].radio_flag = OFF;
-				is_radio_packet_ready = 1;
+				is_radio_packet_ready = ON;
 			}
 		}
 		/* Check for incoming UART data */
@@ -238,19 +238,28 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief  This function is used for UART Rx callbacks.
+  * @retval None
+  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+	/* USART2 is used to receive updates about the status
+	 * of the buttons and trigger a radio transmission
+	 */
 	if (huart->Instance == USART2)
 	{
 		static uint8_t buffer;
 		static uint8_t new_status;
 		static uint8_t id;
 		
+		/* Parse the receive buffer */
 		buffer = Rx_buffer;
 		new_status = buffer & 1;
 		buffer >>= 1;
 		id = buffer;
 		
+		/* Update the button status and radio flag if there is a change */
 		if (buttons[id].status != new_status)
 		{
 			buttons[id].status = new_status;
@@ -279,14 +288,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		{
 			packet_buffer = radio_packet;
 			buffer = packet_buffer;
+			is_radio_packet_ready = OFF;
+			is_going = ON;
+			is_delay = OFF;
+			is_transmitting_high = ON;
 			repeat = 0;
-			is_going = 1;
-			is_delay = 0;
 			counter = 0;
 			bit_counter = 0;
-			is_transmitting_high = 1;
 			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_SET);
-			is_radio_packet_ready = 0;
 		}
 		if (is_going)
 		{
@@ -305,26 +314,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			
 			if (is_transmitting_high && (counter == delay_ticks))
 			{
-				is_transmitting_high = 0;
+				is_transmitting_high = OFF;
 				counter = 0;
 			}
 			else if (!is_transmitting_high && (counter == delay_ticks))
 			{
 				counter = 0;
 				bit_counter++;
-				is_transmitting_high = 1;
+				is_transmitting_high = ON;
 				buffer >>= 1;
 				if (bit_counter == RADIO_PACKET_SIZE)
 				{
 					bit_counter = 0;
-					is_going = 0;
+					is_going = OFF;
 					if (repeat < NUM_RADIO_PACKETS - 1)
 					{
-						is_delay = 1;
+						is_delay = ON;
 					}
 					else
 					{
-						is_delay = 0;
+						is_delay = OFF;
 						repeat = 0;
 					}
 				}
@@ -332,13 +341,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		else if (is_delay)
 		{
-			is_transmitting_high = 0;
+			is_transmitting_high = OFF;
 			counter++;
 			if (counter == RADIO_PACKET_DELAY_US/COUNTER_INC_US)
 			{
-				is_transmitting_high = 1;
-				is_going = 1;
-				is_delay = 0;
+				is_transmitting_high = ON;
+				is_going = ON;
+				is_delay = OFF;
 				buffer = packet_buffer;
 				repeat++;
 				counter = 0;
@@ -347,7 +356,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		else
 		{
 			HAL_GPIO_WritePin(GPIO_Output_GPIO_Port, GPIO_Output_Pin, GPIO_PIN_RESET);
-			is_going = 0;
+			is_going = OFF;
 			repeat = 0;
 		}
 	}
@@ -387,6 +396,12 @@ void Buttons_Init(void)
 	Button_Init(3, GPIO_Input_GPIO_Port, GPIO_InputE6_Pin); // PE6
 }
 
+/**
+  * @brief  This function is used to update the UART_packets
+  *         array with the current status of the buttons.
+	*				  See documentation for the encoding specifications.
+  * @retval None
+  */
 void Encode_UART_Packets(uint8_t UART_Packets[])
 {
 	int i;
@@ -401,6 +416,13 @@ void Encode_UART_Packets(uint8_t UART_Packets[])
 	}
 }
 
+/**
+  * @brief  This function takes a button index as input and returns
+	*         a radio packet containing the status of the button.
+  * @param  i: the index of the button to be encoded
+  * @retval the packet containing the button status (see documentaion
+  *         for the encoding specifications)
+  */
 uint32_t Encode_Radio_Packet(uint8_t i)
 {
 	uint32_t radio_packet;
@@ -447,7 +469,8 @@ void Read_Button(uint8_t i)
   */
 void LED_Debug(void)
 {
-	if (buttons[0].status == ON) // Connect PE2 to 5V (since it is pull-down) to light up LD3
+	/* Connect PE2 to 3V (since it is pull-down) to light up LD3 */
+	if (buttons[0].status == ON)
 	{
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 	}
@@ -455,6 +478,7 @@ void LED_Debug(void)
 	{
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 	}
+	/* Connect PE4 to 3V to light up LD4 */
 	if (buttons[1].status == ON)
 	{
 			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET);
@@ -463,6 +487,7 @@ void LED_Debug(void)
 	{
 			HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET);
 	}
+	/* Connect PE5 to 3V to light up LD5 */
 	if (buttons[2].status == ON)
 	{
 			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
@@ -471,6 +496,7 @@ void LED_Debug(void)
 	{
 			HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_RESET);
 	}
+	/* Connect PE6 to 3V to light up LD6 */
 	if (buttons[3].status == ON)
 	{
 			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
